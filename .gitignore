@@ -1,0 +1,20 @@
+/bin/
+/pkg/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# IDE/editor
+.vscode/
+.idea/
+*.iml
+
+# Go specific
+vendor/
+
+# Docs excluded as requested
+docs/
