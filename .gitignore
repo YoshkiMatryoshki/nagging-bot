@@ -18,3 +18,7 @@ vendor/
 
 # Docs excluded as requested
 docs/
+
+# Local env/config files
+*.env
+!config.example.env

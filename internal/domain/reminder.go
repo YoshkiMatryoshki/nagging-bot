@@ -11,7 +11,9 @@ type Reminder struct {
 	StartDate   time.Time
 	EndDate     time.Time
 	TimesOfDay  []TimeOfDay
-	TimeZone    string
+	// TimeZone stores the IANA time zone (e.g., "Europe/Moscow") used to compute occurrences.
+	// TODO: support re-computing future occurrences if the user changes their preferred time zone.
+	TimeZone string
 	IsActive    bool
 }
 
