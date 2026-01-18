@@ -10,24 +10,26 @@ import (
 
 // Notifier sends reminder messages to the user.
 type Notifier interface {
-	Send(ctx context.Context, occ *domain.Occurrence) error
+	Send(ctx context.Context, occ OccurrenceWithReminder) error
 }
 
 // Scheduler polls due occurrences and sends reminders.
 type Scheduler struct {
 	occurrenceStore domain.OccurrenceStore
+	reminderStore   domain.ReminderStore
 	notifier        Notifier
 	interval        time.Duration
 }
 
 // New constructs a scheduler with a polling interval.
-func New(occurrences domain.OccurrenceStore, notifier Notifier, interval time.Duration) *Scheduler {
+func New(occurrences domain.OccurrenceStore, reminders domain.ReminderStore, notifier Notifier, interval time.Duration) *Scheduler {
 	if interval <= 0 {
 		interval = time.Minute
 	}
 
 	return &Scheduler{
 		occurrenceStore: occurrences,
+		reminderStore:   reminders,
 		notifier:        notifier,
 		interval:        interval,
 	}
@@ -60,7 +62,14 @@ func (s *Scheduler) tick(ctx context.Context) error {
 	}
 
 	for _, occ := range due {
-		if err := s.notifier.Send(ctx, occ); err != nil {
+		payload := OccurrenceWithReminder{Occurrence: occ}
+		if occ.ReminderID != 0 {
+			if rem, err := s.reminderStore.GetByID(ctx, occ.ReminderID); err == nil {
+				payload.Reminder = rem
+			}
+		}
+
+		if err := s.notifier.Send(ctx, payload); err != nil {
 			log.Printf("send occurrence %d failed: %v", occ.ID, err)
 			continue
 		}
@@ -71,4 +80,10 @@ func (s *Scheduler) tick(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// OccurrenceWithReminder bundles occurrence and optional reminder for notifier.
+type OccurrenceWithReminder struct {
+	Occurrence *domain.Occurrence
+	Reminder   *domain.Reminder
 }
