@@ -2,12 +2,13 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"log"
 
 	"naggingbot/internal/app"
 	"naggingbot/internal/scheduler"
-	"naggingbot/internal/storage/memory"
+	"naggingbot/internal/storage/sqlite"
 	"naggingbot/internal/telegram"
 )
 
@@ -21,9 +22,19 @@ func main() {
 	log.Printf("config loaded: poll=%s scheduler=%s db=%s", cfg.PollInterval, cfg.SchedulerInterval, cfg.DBPath)
 
 	ctx := context.Background()
-	occurrenceStore := memory.NewInMemoryOccurrenceStore()
-	userStore := memory.NewInMemoryUserStore()
-	reminderStore := memory.NewInMemoryReminderStore()
+	if err := sqlite.EnsureDB(ctx, cfg.DBPath); err != nil {
+		log.Fatalf("failed to init database: %v", err)
+	}
+
+	db, err := sql.Open("sqlite", cfg.DBPath)
+	if err != nil {
+		log.Fatalf("failed to open database: %v", err)
+	}
+	defer db.Close()
+
+	occurrenceStore := sqlite.NewOccurrenceStore(db)
+	userStore := sqlite.NewUserStore(db)
+	reminderStore := sqlite.NewReminderStore(db)
 
 	notifier := &scheduler.LoggingNotifier{}
 	sched := scheduler.New(occurrenceStore, reminderStore, notifier, cfg.SchedulerInterval)

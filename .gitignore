@@ -22,3 +22,6 @@ docs/
 # Local env/config files
 *.env
 !config.example.env
+
+# Local SQLite database
+*.db

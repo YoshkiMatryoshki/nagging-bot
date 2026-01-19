@@ -41,12 +41,13 @@ func (h *StartHandler) HandleUpdate(ctx context.Context, update Update) error {
 		return nil
 	}
 
-	if err := h.ensureUser(ctx, user); err != nil {
+	domainUser, err := h.ensureUser(ctx, user)
+	if err != nil {
 		log.Printf("telegram: failed to upsert user %d: %v", user.ID, err)
 		return nil
 	}
 
-	if err := h.createDemoReminder(ctx, user); err != nil {
+	if err := h.createDemoReminder(ctx, domainUser); err != nil {
 		log.Printf("telegram: failed to create demo reminder for user %d: %v", user.ID, err)
 		return nil
 	}
@@ -56,7 +57,7 @@ func (h *StartHandler) HandleUpdate(ctx context.Context, update Update) error {
 	return nil
 }
 
-func (h *StartHandler) ensureUser(ctx context.Context, u *User) error {
+func (h *StartHandler) ensureUser(ctx context.Context, u *User) (*domain.User, error) {
 	domainUser := &domain.User{
 		TelegramID: u.ID,
 		Username:   u.Username,
@@ -64,17 +65,13 @@ func (h *StartHandler) ensureUser(ctx context.Context, u *User) error {
 		LastName:   u.LastName,
 		Language:   u.LanguageCode,
 	}
-	return h.users.Upsert(ctx, domainUser)
+	if err := h.users.Upsert(ctx, domainUser); err != nil {
+		return nil, err
+	}
+	return domainUser, nil
 }
 
-func (h *StartHandler) createDemoReminder(ctx context.Context, u *User) error {
-	existing, err := h.reminders.ListByUser(ctx, u.ID)
-	if err != nil {
-		return err
-	}
-	if len(existing) > 0 {
-		return nil
-	}
+func (h *StartHandler) createDemoReminder(ctx context.Context, u *domain.User) error {
 
 	now := time.Now().UTC()
 	start := now.Add(1 * time.Minute)
