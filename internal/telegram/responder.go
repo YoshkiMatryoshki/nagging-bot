@@ -13,6 +13,7 @@ import (
 type Responder interface {
 	EditMessageReplyMarkup(ctx context.Context, chatID int64, messageID int64, markup any) error
 	EditMessageText(ctx context.Context, chatID int64, messageID int64, text string, markup any) error
+	SendMessage(ctx context.Context, chatID int64, text string) error
 }
 
 type httpResponder struct {
@@ -89,6 +90,35 @@ func (r *httpResponder) EditMessageText(ctx context.Context, chatID int64, messa
 
 	if resp.StatusCode >= 300 {
 		return fmt.Errorf("editMessageText status %s", resp.Status)
+	}
+	return nil
+}
+
+func (r *httpResponder) SendMessage(ctx context.Context, chatID int64, text string) error {
+	url := fmt.Sprintf("https://api.telegram.org/bot%s/sendMessage", r.token)
+	payload := map[string]any{
+		"chat_id": chatID,
+		"text":    text,
+	}
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := r.httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 300 {
+		return fmt.Errorf("sendMessage status %s", resp.Status)
 	}
 	return nil
 }

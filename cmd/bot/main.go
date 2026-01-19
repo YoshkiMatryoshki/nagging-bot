@@ -46,8 +46,11 @@ func main() {
 
 	// Telegram dispatcher and polling.
 	dispatcher := telegram.NewDispatcher()
-	dispatcher.RegisterCommand("/start", telegram.NewStartHandler(userStore, reminderStore, occurrenceStore))
-	dispatcher.RegisterCallback(telegram.NewOccurrenceCallbackHandler(occurrenceStore, telegram.NewHTTPResponder(cfg.BotToken)))
+	responder := telegram.NewHTTPResponder(cfg.BotToken)
+	dispatcher.RegisterCommand("/start", telegram.NewStartHandler(userStore, responder))
+	dispatcher.RegisterCommand("/reminder", telegram.NewReminderHandler(userStore, reminderStore, occurrenceStore, responder))
+	dispatcher.RegisterCommand("/test", telegram.NewTestHandler(userStore, reminderStore, occurrenceStore, responder, 737053478))
+	dispatcher.RegisterCallback(telegram.NewOccurrenceCallbackHandler(occurrenceStore, responder))
 
 	tgClient := telegram.NewClient(cfg.BotToken, cfg.PollInterval, cfg.PollTimeout)
 	go func() {
