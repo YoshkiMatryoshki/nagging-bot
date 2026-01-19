@@ -36,17 +36,22 @@ func main() {
 	userStore := sqlite.NewUserStore(db)
 	reminderStore := sqlite.NewReminderStore(db)
 
-	notifier := &scheduler.LoggingNotifier{}
-	sched := scheduler.New(occurrenceStore, reminderStore, notifier, cfg.SchedulerInterval)
+	logNotifier := &scheduler.LoggingNotifier{}
+	tgNotifier := telegram.NewNotifier(cfg.BotToken, userStore)
+	multiNotifier := scheduler.NewMultiNotifier(logNotifier, tgNotifier)
+	sched := scheduler.New(occurrenceStore, reminderStore, multiNotifier, cfg.SchedulerInterval)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// Start Telegram polling in a separate goroutine.
+	// Telegram dispatcher and polling.
+	dispatcher := telegram.NewDispatcher()
+	dispatcher.RegisterCommand("/start", telegram.NewStartHandler(userStore, reminderStore, occurrenceStore))
+	dispatcher.RegisterCallback(telegram.NewOccurrenceCallbackHandler(occurrenceStore, telegram.NewHTTPResponder(cfg.BotToken)))
+
 	tgClient := telegram.NewClient(cfg.BotToken, cfg.PollInterval, cfg.PollTimeout)
-	tgHandler := telegram.NewStartHandler(userStore, reminderStore, occurrenceStore)
 	go func() {
-		if err := tgClient.Poll(ctx, tgHandler); err != nil && !errors.Is(err, context.Canceled) {
+		if err := tgClient.Poll(ctx, dispatcher); err != nil && !errors.Is(err, context.Canceled) {
 			log.Printf("telegram poller stopped: %v", err)
 		}
 	}()

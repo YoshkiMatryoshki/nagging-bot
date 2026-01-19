@@ -3,7 +3,6 @@ package telegram
 import (
 	"context"
 	"log"
-	"strings"
 	"time"
 
 	"naggingbot/internal/domain"
@@ -25,16 +24,8 @@ func NewStartHandler(users domain.UserStore, reminders domain.ReminderStore, occ
 	}
 }
 
-func (h *StartHandler) HandleUpdate(ctx context.Context, update Update) error {
-	if update.Message == nil {
-		return nil
-	}
-
-	msg := update.Message
-	if !strings.HasPrefix(msg.Text, "/start") {
-		return nil
-	}
-
+// HandleCommand processes the /start command.
+func (h *StartHandler) HandleCommand(ctx context.Context, msg *Message) error {
 	user := msg.From
 	if user == nil {
 		log.Printf("telegram: /start received but user is nil (chat_id=%d)", msg.Chat.ID)
@@ -72,10 +63,9 @@ func (h *StartHandler) ensureUser(ctx context.Context, u *User) (*domain.User, e
 }
 
 func (h *StartHandler) createDemoReminder(ctx context.Context, u *domain.User) error {
-
 	now := time.Now().UTC()
-	start := now.Add(1 * time.Minute)
-	end := now.Add(10 * time.Minute)
+	start := now.Add(2 * time.Second)
+	end := now.Add(40 * time.Second)
 
 	rem := &domain.Reminder{
 		UserID:      u.ID,
@@ -91,7 +81,7 @@ func (h *StartHandler) createDemoReminder(ctx context.Context, u *domain.User) e
 		return err
 	}
 
-	for t := start; !t.After(end); t = t.Add(time.Second * 30) {
+	for t := start; !t.After(end); t = t.Add(10 * time.Second) {
 		occ := &domain.Occurrence{
 			ReminderID: rem.ID,
 			FireAtUtc:  t,

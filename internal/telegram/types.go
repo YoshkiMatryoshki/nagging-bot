@@ -4,6 +4,7 @@ package telegram
 type Update struct {
 	UpdateID int64    `json:"update_id"`
 	Message  *Message `json:"message,omitempty"`
+	CallbackQuery *CallbackQuery `json:"callback_query,omitempty"`
 }
 
 // Message represents a Telegram message.
@@ -37,4 +38,13 @@ type User struct {
 	LastName     string `json:"last_name,omitempty"`
 	Username     string `json:"username,omitempty"`
 	LanguageCode string `json:"language_code,omitempty"`
+}
+
+// CallbackQuery represents a Telegram callback query from inline buttons.
+type CallbackQuery struct {
+	ID              string   `json:"id"`
+	From            *User    `json:"from"`
+	Message         *Message `json:"message,omitempty"`
+	InlineMessageID string   `json:"inline_message_id,omitempty"`
+	Data            string   `json:"data,omitempty"`
 }

@@ -56,9 +56,8 @@ func (c *Client) Poll(ctx context.Context, handler Handler) error {
 
 		for _, u := range updates {
 			offset = u.UpdateID + 1
-			if err := handler.HandleUpdate(ctx, u); err != nil {
-				log.Printf("telegram handler error: %v", err)
-			}
+			// Handler handles its own errors internally; keep loop running.
+			_ = handler.HandleUpdate(ctx, u)
 		}
 
 		// Cooldown between polling attempts.

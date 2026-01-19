@@ -8,11 +8,6 @@ import (
 	"naggingbot/internal/domain"
 )
 
-// Notifier sends reminder messages to the user.
-type Notifier interface {
-	Send(ctx context.Context, occ OccurrenceWithReminder) error
-}
-
 // Scheduler polls due occurrences and sends reminders.
 type Scheduler struct {
 	occurrenceStore domain.OccurrenceStore
