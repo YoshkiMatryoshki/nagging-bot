@@ -35,7 +35,13 @@ func (h *StartHandler) HandleCommand(ctx context.Context, msg *Message) error {
 	}
 
 	if h.responder != nil {
-		if err := h.responder.SendMessage(ctx, user.ID, "You are registered.\nCreate reminder: /reminder <name>_<description>_<DD.MM.YYYY>_<DD.MM.YYYY>_<HH:MM;HH:MM>_<IANA timezone>\nExample: /reminder Pill_VitC_19.01.2026_20.01.2026_08:00;13:00;19:00_Europe/Warsaw"); err != nil {
+		msg := "You are registered.\n\nCommands:\n" +
+			"/reminder <name>_<description>_<DD.MM.YYYY>_<DD.MM.YYYY>_<HH:MM;HH:MM>_<IANA timezone> - create reminder\n" +
+			"/list - list latest reminders (up to 20)\n" +
+			"/delete <id> - delete reminder and occurrences\n" +
+			"/test - create demo reminder (restricted)\n\n" +
+			"Example:\n/reminder Pill_VitC_19.01.2026_20.01.2026_08:00;13:00;19:00_Europe/Warsaw"
+		if err := h.responder.SendMessage(ctx, user.ID, msg); err != nil {
 			log.Printf("telegram: failed to send start ack: %v", err)
 		}
 	}

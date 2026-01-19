@@ -82,6 +82,29 @@ func (s *InMemoryReminderStore) Update(ctx context.Context, reminder *domain.Rem
 	return nil
 }
 
+func (s *InMemoryReminderStore) DeleteByID(ctx context.Context, id int64) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	rem, ok := s.byID[id]
+	if !ok {
+		return nil
+	}
+
+	delete(s.byID, id)
+
+	// Remove from user slice.
+	var updated []*domain.Reminder
+	for _, r := range s.byUser[rem.UserID] {
+		if r.ID != id {
+			updated = append(updated, cloneReminder(r))
+		}
+	}
+	s.byUser[rem.UserID] = updated
+
+	return nil
+}
+
 func cloneReminder(r *domain.Reminder) *domain.Reminder {
 	c := *r
 	if r.TimesOfDay != nil {

@@ -99,6 +99,18 @@ func (s *InMemoryOccurrenceStore) UpdateStatus(ctx context.Context, id int64, st
 	return nil
 }
 
+func (s *InMemoryOccurrenceStore) DeleteByReminder(ctx context.Context, reminderID int64) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for id, occ := range s.byID {
+		if occ.ReminderID == reminderID {
+			delete(s.byID, id)
+		}
+	}
+	return nil
+}
+
 func cloneOccurrence(occ *domain.Occurrence) *domain.Occurrence {
 	c := *occ
 	return &c

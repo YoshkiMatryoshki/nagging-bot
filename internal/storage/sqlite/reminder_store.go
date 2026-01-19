@@ -83,6 +83,11 @@ func (s *ReminderStore) Update(ctx context.Context, reminder *domain.Reminder) e
 	return err
 }
 
+func (s *ReminderStore) DeleteByID(ctx context.Context, id int64) error {
+	_, err := s.db.ExecContext(ctx, `DELETE FROM reminders WHERE id = ?`, id)
+	return err
+}
+
 func scanReminder(scanner interface {
 	Scan(dest ...any) error
 }) (*domain.Reminder, error) {

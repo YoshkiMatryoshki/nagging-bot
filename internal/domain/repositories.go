@@ -18,6 +18,7 @@ type ReminderStore interface {
 	ListByUser(ctx context.Context, userID int64) ([]*Reminder, error)
 	Create(ctx context.Context, reminder *Reminder) error
 	Update(ctx context.Context, reminder *Reminder) error
+	DeleteByID(ctx context.Context, id int64) error
 }
 
 // OccurrenceStore defines the minimal operations needed for occurrences.
@@ -27,4 +28,5 @@ type OccurrenceStore interface {
 	ListPendingInRange(ctx context.Context, startUTC, endUTC time.Time) ([]*Occurrence, error)
 	Create(ctx context.Context, occurrence *Occurrence) error
 	UpdateStatus(ctx context.Context, id int64, status OccurrenceStatus) error
+	DeleteByReminder(ctx context.Context, reminderID int64) error
 }

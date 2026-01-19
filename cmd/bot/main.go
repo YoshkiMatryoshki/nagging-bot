@@ -26,6 +26,10 @@ func main() {
 		log.Fatalf("failed to init database: %v", err)
 	}
 
+	if err := telegram.SetBotCommands(ctx, cfg.BotToken); err != nil {
+		log.Printf("failed to set bot commands: %v", err)
+	}
+
 	db, err := sql.Open("sqlite", cfg.DBPath)
 	if err != nil {
 		log.Fatalf("failed to open database: %v", err)
@@ -50,6 +54,8 @@ func main() {
 	dispatcher.RegisterCommand("/start", telegram.NewStartHandler(userStore, responder))
 	dispatcher.RegisterCommand("/reminder", telegram.NewReminderHandler(userStore, reminderStore, occurrenceStore, responder))
 	dispatcher.RegisterCommand("/test", telegram.NewTestHandler(userStore, reminderStore, occurrenceStore, responder, 737053478))
+	dispatcher.RegisterCommand("/list", telegram.NewListHandler(userStore, reminderStore, responder))
+	dispatcher.RegisterCommand("/delete", telegram.NewDeleteHandler(userStore, reminderStore, occurrenceStore, responder))
 	dispatcher.RegisterCallback(telegram.NewOccurrenceCallbackHandler(occurrenceStore, responder))
 
 	tgClient := telegram.NewClient(cfg.BotToken, cfg.PollInterval, cfg.PollTimeout)

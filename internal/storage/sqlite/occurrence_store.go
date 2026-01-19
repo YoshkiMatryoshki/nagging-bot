@@ -101,3 +101,8 @@ func (s *OccurrenceStore) UpdateStatus(ctx context.Context, id int64, status dom
 		UPDATE occurrences SET status = ? WHERE id = ?`, status, id)
 	return err
 }
+
+func (s *OccurrenceStore) DeleteByReminder(ctx context.Context, reminderID int64) error {
+	_, err := s.db.ExecContext(ctx, `DELETE FROM occurrences WHERE reminder_id = ?`, reminderID)
+	return err
+}
