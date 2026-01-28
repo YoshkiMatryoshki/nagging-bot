@@ -27,7 +27,7 @@ type Config struct {
 //   POLL_TIMEOUT         - Long-poll timeout per request (default: 10s)
 //   SCHEDULER_INTERVAL   - Scheduler tick interval (default: 1s)
 func LoadConfig() (Config, error) {
-	// Best-effort load from repo-root .env: assumes running from cmd/bot (cwd two levels below repo root).
+	// Best-effort load .env.
 	if err := loadEnvFile(".env"); err != nil {
 		return Config{}, fmt.Errorf("load .env: %w", err)
 	}
@@ -80,71 +80,68 @@ func loadEnvFile(path string) error {
 		return err
 	}
 
-	repoRoot := filepath.Dir(filepath.Dir(cwd))
-	envPath := filepath.Join(repoRoot, path)
-
-	f, err := os.Open(envPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil
-		}
-		return err
-	}
-	defer f.Close()
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" || strings.HasPrefix(line, "#") {
-			continue
-		}
-
-		parts := strings.SplitN(line, "=", 2)
-		if len(parts) != 2 {
-			return fmt.Errorf("invalid env line %q", line)
-		}
-
-		key := strings.TrimSpace(parts[0])
-		val := strings.TrimSpace(parts[1])
-		if key == "" {
-			return fmt.Errorf("invalid env line %q: empty key", line)
-		}
-		if err := os.Setenv(key, val); err != nil {
-			return fmt.Errorf("set env %s: %w", key, err)
-		}
+	candidates := []string{
+		cwd,
+		filepath.Dir(cwd),
 	}
 
-	if err := scanner.Err(); err != nil {
-		return err
+	found := false
+
+	for _, dir := range candidates {
+		envPath := filepath.Join(dir, path)
+		if _, err := os.Stat(envPath); err != nil {
+			if os.IsNotExist(err) {
+				fmt.Fprintf(os.Stderr, "loadEnvFile: not found %s\n", envPath)
+				continue
+			}
+			fmt.Fprintf(os.Stderr, "loadEnvFile: stat failed for %s: %v\n", envPath, err)
+			return err
+		}
+
+		f, err := os.Open(envPath)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "loadEnvFile: open failed for %s: %v\n", envPath, err)
+			return err
+		}
+		defer f.Close()
+		fmt.Fprintf(os.Stderr, "loadEnvFile: using %s\n", envPath)
+		found = true
+
+		scanner := bufio.NewScanner(f)
+		for scanner.Scan() {
+			line := strings.TrimSpace(scanner.Text())
+			if line == "" || strings.HasPrefix(line, "#") {
+				continue
+			}
+
+			parts := strings.SplitN(line, "=", 2)
+			if len(parts) != 2 {
+				return fmt.Errorf("invalid env line %q", line)
+			}
+
+			key := strings.TrimSpace(parts[0])
+			val := strings.TrimSpace(parts[1])
+			if key == "" {
+				return fmt.Errorf("invalid env line %q: empty key", line)
+			}
+			if err := os.Setenv(key, val); err != nil {
+				return fmt.Errorf("set env %s: %w", key, err)
+			}
+		}
+
+		if err := scanner.Err(); err != nil {
+			return err
+		}
+
+		// Loaded successfully; stop.
+		return nil
 	}
+
+	if !found {
+		return fmt.Errorf("env file %s not found in candidates", path)
+	}
+
 	return nil
-}
-
-// findEnvFile walks up from the current working directory to locate the first existing file named path.
-func findEnvFile(path string) (string, error) {
-	dir, err := os.Getwd()
-	if err != nil {
-		return "", err
-	}
-
-	for {
-		candidate := filepath.Join(dir, path)
-		if _, err := os.Stat(candidate); err == nil {
-			return candidate, nil
-		}
-
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			break
-		}
-		dir = parent
-	}
-
-	return "", nil
 }
 
 func (c Config) validate() error {
