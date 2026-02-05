@@ -28,6 +28,5 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
           port: ${{ secrets.SSH_PORT || 22 }}
-          fingerprint: ${{ secrets.SSH_FINGERPRINT }}
           source: "naggingbot"
           target: "/opt/services/naggingbot/upload/"
