@@ -123,6 +123,12 @@ jobs:
           umask 077
           KEY_FILE="$(mktemp)"
           trap 'rm -f "${KEY_FILE}"' EXIT
-          printf '%s' "${SSH_KEY}" > "${KEY_FILE}"
+          # Normalize line endings and keep trailing newline for OpenSSH parser.
+          printf '%s\n' "${SSH_KEY}" | sed 's/\r$//' > "${KEY_FILE}"
+          chmod 600 "${KEY_FILE}"
+          if ! ssh-keygen -y -f "${KEY_FILE}" >/dev/null 2>&1; then
+            echo "Invalid SSH_KEY secret: expected an OpenSSH private key block." >&2
+            exit 1
+          fi
           ssh -o StrictHostKeyChecking=accept-new -i "${KEY_FILE}" -p "${SSH_PORT}" "${SSH_USER}@${SSH_HOST}" \
             "chmod +x '${ROOT_PATH}/shared/deploy_remote.sh' && '${ROOT_PATH}/shared/deploy_remote.sh' '${ROOT_PATH}' '${SERVICE_NAME}' '${BINARY_NAME}' '${BACKUP_DB}'"
