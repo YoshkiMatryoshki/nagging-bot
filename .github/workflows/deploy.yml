@@ -2,6 +2,11 @@ name: deploy-step1
 
 on:
   workflow_dispatch:
+    inputs:
+      environment:
+        description: Environment suffix (e.g. dev, prod)
+        required: true
+        default: dev
 
 permissions:
   contents: read
@@ -9,6 +14,12 @@ permissions:
 jobs:
   build_and_copy:
     runs-on: ubuntu-latest
+    env:
+      DEPLOY_ENV: ${{ github.event.inputs.environment }}
+      ROOT_PATH: /opt/services/naggingbot-${{ github.event.inputs.environment }}
+      SERVICE_NAME: naggingbot-${{ github.event.inputs.environment }}
+      BINARY_NAME: naggingbot
+      SERVICE_USER: cringe-deploy
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -19,7 +30,40 @@ jobs:
           go-version: "1.22"
 
       - name: Build linux binary
-        run: GOOS=linux GOARCH=amd64 go build -o naggingbot ./cmd/bot
+        run: GOOS=linux GOARCH=amd64 go build -o ${BINARY_NAME} ./cmd/bot
+
+      - name: Build .env from secrets
+        run: |
+          cat > .env <<EOF
+          BOT_TOKEN=${{ secrets.BOT_TOKEN }}
+          DB_PATH=${{ secrets.DB_PATH }}
+          POLL_INTERVAL=${{ secrets.POLL_INTERVAL }}
+          POLL_TIMEOUT=${{ secrets.POLL_TIMEOUT }}
+          SCHEDULER_INTERVAL=${{ secrets.SCHEDULER_INTERVAL }}
+          EOF
+
+      - name: Build systemd service file
+        run: |
+          cat > ${SERVICE_NAME}.service <<EOF
+          [Unit]
+          Description=NaggingBot Telegram Reminder
+          After=network-online.target
+          Wants=network-online.target
+
+          [Service]
+          Type=simple
+          User=${SERVICE_USER}
+          Group=${SERVICE_USER}
+          WorkingDirectory=${ROOT_PATH}/current
+          ExecStartPre=/usr/bin/ln -sfn ${ROOT_PATH}/shared/.env ${ROOT_PATH}/current/.env
+          ExecStart=${ROOT_PATH}/current/${BINARY_NAME}
+          EnvironmentFile=${ROOT_PATH}/shared/.env
+          Restart=on-failure
+          RestartSec=5
+
+          [Install]
+          WantedBy=multi-user.target
+          EOF
 
       - name: Copy binary to server
         uses: appleboy/scp-action@v0.1.7
@@ -28,5 +72,25 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
           port: ${{ secrets.SSH_PORT || 22 }}
-          source: "naggingbot"
-          target: "/opt/services/naggingbot/upload/"
+          source: "${{ env.BINARY_NAME }}"
+          target: "${{ env.ROOT_PATH }}/upload/"
+
+      - name: Copy env to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          source: ".env"
+          target: "${{ env.ROOT_PATH }}/shared/"
+
+      - name: Copy service file to server (shared)
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          source: "${{ env.SERVICE_NAME }}.service"
+          target: "${{ env.ROOT_PATH }}/shared/"
