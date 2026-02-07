@@ -36,7 +36,7 @@ jobs:
         run: |
           cat > .env <<EOF
           BOT_TOKEN=${{ secrets.BOT_TOKEN }}
-          DB_PATH=${{ secrets.DB_PATH }}
+          DB_PATH=${ROOT_PATH}/shared/naggingbot.db
           POLL_INTERVAL=${{ secrets.POLL_INTERVAL }}
           POLL_TIMEOUT=${{ secrets.POLL_TIMEOUT }}
           SCHEDULER_INTERVAL=${{ secrets.SCHEDULER_INTERVAL }}
